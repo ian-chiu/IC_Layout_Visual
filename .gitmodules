@@ -1,0 +1,13 @@
+[submodule "vendors/glfw"]
+	path = vendors/glfw
+	url = https://github.com/glfw/glfw
+[submodule "vendors/spdlog"]
+	path = vendors/spdlog
+	url = https://github.com/gabime/spdlog
+[submodule "vendors/glm"]
+	path = vendors/glm
+	url = https://github.com/g-truc/glm.git
+[submodule "vendors/imgui"]
+	path = vendors/imgui
+	url = https://github.com/ian-chiu/imgui.git
+	branch = docking
