@@ -9,5 +9,5 @@
 	url = https://github.com/g-truc/glm.git
 [submodule "vendors/imgui"]
 	path = vendors/imgui
-	url = https://github.com/ian-chiu/imgui.git
+	url = https://github.com/ian-chiu/imgui
 	branch = docking

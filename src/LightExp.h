@@ -7,6 +7,10 @@
 #include <gl/GL.h>
 #include <array>
 
+// #include <filesystem>
+#include <fstream>
+#include <sstream>
+
 class ExampleLayer : public Layer
 {
 public:
@@ -29,79 +33,119 @@ public:
         m_PointLights[3].Position = glm::vec3( 0.0f,  0.0f, -10.0f);
 
         //----------------------CUBE---------------------
+		std::ifstream inputFile("../../data/Example1.layout");
+		if (!inputFile) 
+		{
+			std::cout << "Cannot open input file.\n"; 
+			exit(EXIT_FAILURE);
+		}
+
+		std::string line;
+
+		while (std::getline(inputFile, line))
+		{
+			std::istringstream iss{ line };
+			std::string token;
+			iss >> token;
+			if (token[0] == ';')
+				continue;
+			else if (token == "0")
+			{
+				glm::vec2 bl, tr;
+				iss >> bl.x;
+				iss >> bl.y;
+				iss >> tr.x;
+				iss >> tr.y;
+				m_ChipBoundary.reset(bl, tr);
+			}
+			else 
+			{
+				Polygon polygon;
+				glm::vec2 bl, tr;
+				iss >> bl.x;
+				iss >> bl.y;
+				iss >> tr.x;
+				iss >> tr.y;
+				polygon.Boundary.reset(bl, tr);
+				iss >> polygon.NetId;
+				iss >> polygon.LayerId;
+				iss >> polygon.PolyType;
+				m_Polygons.push_back(polygon);
+			}
+		}
+
 		m_CubeVA.reset(new VertexArray);
-		float vertices[] = {
-			// Position             // normal
-			// SOUTH                
-			-0.5f, -0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
-			 0.5f, -0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
-			 0.5f,  0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
-			-0.5f,  0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
-
-			// NORTH
-			-0.5f, -0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
-			 0.5f, -0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
-			 0.5f,  0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
-			-0.5f,  0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
-
-			// WEST
-			-0.5f, -0.5f, -0.5f,    -1.0f, 0.0f, 0.0f,
-			-0.5f,  0.5f, -0.5f,    -1.0f, 0.0f, 0.0f,
-			-0.5f,  0.5f,  0.5f,    -1.0f, 0.0f, 0.0f,
-			-0.5f, -0.5f,  0.5f,    -1.0f, 0.0f, 0.0f,
-
-			// EAST
-			 0.5f, -0.5f, -0.5f,    1.0f, 0.0f, 0.0f,
-			 0.5f,  0.5f, -0.5f,    1.0f, 0.0f, 0.0f,
-			 0.5f,  0.5f,  0.5f,    1.0f, 0.0f, 0.0f,
-			 0.5f, -0.5f,  0.5f,    1.0f, 0.0f, 0.0f,
-
-			// TOP
-			-0.5f,  0.5f, -0.5f,    0.0f, 1.0f, 0.0f,
-			-0.5f,  0.5f,  0.5f,    0.0f, 1.0f, 0.0f,
-			 0.5f,  0.5f,  0.5f,    0.0f, 1.0f, 0.0f,
-			 0.5f,  0.5f, -0.5f,    0.0f, 1.0f, 0.0f,
-
-			// BOTTOM
-			-0.5f, -0.5f, -0.5f,    0.0f, -1.0f, 0.0f,
-			-0.5f, -0.5f,  0.5f,    0.0f, -1.0f, 0.0f,
-			 0.5f, -0.5f,  0.5f,    0.0f, -1.0f, 0.0f,
-			 0.5f, -0.5f, -0.5f,    0.0f, -1.0f, 0.0f,
-			
-		};
 		BufferLayout layout = {
 			{ ShaderDataType::Float3, "a_Position" },
             { ShaderDataType::Float3, "a_Normal"}
 		};
-		Ref<VertexBuffer> vertexBuffer;
-		vertexBuffer.reset(new VertexBuffer{vertices, sizeof(vertices)});
-		vertexBuffer->SetLayout(layout);
-		m_CubeVA->AddVertexBuffer(vertexBuffer);
+
+		for (const auto &polygon : m_Polygons)
+		{
+			float vertices[] = {
+				polygon.Boundary.BottomLeft.x, 
+				polygon.LayerId,
+				polygon.Boundary.BottomLeft.y,
+				0.0f, 1.0f, 0.0f,
+
+				polygon.Boundary.TopRight.x, 
+				polygon.LayerId,
+				polygon.Boundary.BottomLeft.y,
+				0.0f, 1.0f, 0.0f,
+
+				polygon.Boundary.TopRight.x, 
+				polygon.LayerId,
+				polygon.Boundary.TopRight.y,
+				0.0f, 1.0f, 0.0f,
+
+				polygon.Boundary.BottomLeft.x, 
+				polygon.LayerId,
+				polygon.Boundary.TopRight.y,
+				0.0f, 1.0f, 0.0f,
+			};
+			
+			Ref<VertexBuffer> vertexBuffer;
+			vertexBuffer.reset(new VertexBuffer{ vertices, sizeof(vertices) });
+			vertexBuffer->SetLayout(layout);
+			m_CubeVA->AddVertexBuffer(vertexBuffer);
+		}
+
+		// float vertices[] = {
+		// 	-0.5f, -0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
+		// 	 0.5f, -0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
+		// 	 0.5f,  0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
+		// 	-0.5f,  0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
+		// };
+
+		// float vertices[] = {
+		// 	polygon.Boundary.BottomLeft.x, 
+		// 	polygon.LayerId,
+		// 	polygon.Boundary.BottomLeft.y,
+		// 	0.0f, 1.0f, 0.0f,
+
+		// 	polygon.Boundary.TopRight.x, 
+		// 	polygon.LayerId,
+		// 	polygon.Boundary.BottomLeft.y,
+		// 	0.0f, 1.0f, 0.0f,
+
+		// 	polygon.Boundary.TopRight.x, 
+		// 	polygon.LayerId,
+		// 	polygon.Boundary.TopRight.y,
+		// 	0.0f, 1.0f, 0.0f,
+
+		// 	polygon.Boundary.BottomLeft.x, 
+		// 	polygon.LayerId,
+		// 	polygon.Boundary.TopRight.y,
+		// 	0.0f, 1.0f, 0.0f,
+		// };
+		// Ref<VertexBuffer> vertexBuffer;
+		// vertexBuffer.reset(new VertexBuffer{ vertices, sizeof(vertices) });
+		// vertexBuffer->SetLayout(layout);
+		// m_CubeVA->AddVertexBuffer(vertexBuffer);
 
 		unsigned int indices[] = {
-			// SOUTH
 			0, 1, 2,
 			0, 2, 3,
-
-			// NORTH
-			4, 5, 6,
-			4, 6, 7,
-
-			// EAST
-			8, 9, 10,
-			8, 10, 11,
-
-			// WEST
-			12, 13, 14,
-			12, 14, 15,
-
-			// TOP
-			16, 17, 18,
-			16, 18, 19,
-
-			// BOTTOM
-			20, 21, 22,
-			20, 22, 23
 		};
 		Ref<IndexBuffer> indexBuffer;
 		indexBuffer.reset(new IndexBuffer{indices, sizeof(indices) / sizeof(unsigned int)});
@@ -130,14 +174,14 @@ public:
         for (int i = 0; i < m_PointLights.size(); i++)
             m_CubeShader->UploadPointLight(i, m_PointLights[i]);
 
-		for(unsigned int i = 0; i < 10; i++)
-        {
-            glm::mat4 transform = glm::mat4(1.0f);
-            transform = glm::translate(transform, m_CubePositions[i]);
-            float angle = 20.0f * i; 
-            transform = glm::rotate(transform, (float)glfwGetTime() + glm::radians(angle), glm::vec3(1.0f, 0.5f, 0.5f));
-            Renderer::Submit(m_CubeShader, m_CubeVA, transform);
-        }
+		for (const Ref<VertexBuffer> &vb : m_CubeVA->GetVertexBuffers())
+		{
+			vb->Bind();
+			glm::mat4 transform{1.0f};
+			transform = glm::scale(transform, glm::vec3(1.0f/m_ChipBoundary.Width * 10.0f, 1.0f,  1.0f/m_ChipBoundary.Height * 10.0f));
+			Renderer::Submit(m_CubeShader, m_CubeVA, transform);
+			vb->UnBind();
+		}
 
         Renderer::EndScene();
 	}
@@ -265,18 +309,34 @@ private:
 	float m_LastCamDirectionY{ 0.0f };
 	bool m_MouseNavMode = false;
 
-	std::vector<glm::vec3> m_CubePositions{
-		glm::vec3( 0.0f,  0.0f,  0.0f), 
-		glm::vec3( 2.0f,  5.0f, -15.0f), 
-		glm::vec3(-1.5f, -2.2f, -2.5f),  
-		glm::vec3(-3.8f, -2.0f, -15.0f),  
-		glm::vec3( 2.4f, -0.4f, -3.5f),  
-		glm::vec3(-1.7f,  3.0f, -7.5f),  
-		glm::vec3( 1.3f, -2.0f, -2.5f),  
-		glm::vec3( 1.5f,  2.0f, -2.5f), 
-		glm::vec3( 1.5f,  0.2f, -1.5f), 
-		glm::vec3(-1.3f,  1.0f, -1.5f)  
+	struct Boundary
+	{
+		Boundary() = default;
+		Boundary(glm::vec2 bl, glm::vec2 tr)
+			: BottomLeft(bl), TopRight(tr), Width(tr.x - bl.x), Height(tr.y - bl.y)
+		{
+		}
+		void reset(glm::vec2 bl, glm::vec2 tr)
+		{
+			BottomLeft = bl;
+			TopRight = tr;
+			Width = tr.x - bl.x;
+			Height = tr.y - bl.y;
+		}
+		glm::vec2 BottomLeft;
+		glm::vec2 TopRight;
+		float Width;
+		float Height;
 	};
+	struct Polygon
+	{
+		Boundary Boundary;
+		int NetId;
+		int LayerId;
+		std::string PolyType;
+	};
+	std::vector<Polygon> m_Polygons;
+	Boundary m_ChipBoundary;
 };
 
 class Sandbox : public Application
