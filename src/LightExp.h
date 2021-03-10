@@ -32,7 +32,7 @@ public:
         m_PointLights[2].Position = glm::vec3( 10.0f,  -10.0f, 10.0f);
         m_PointLights[3].Position = glm::vec3( 0.0f,  0.0f, -10.0f);
 
-        //----------------------CUBE---------------------
+        //----------------------read data---------------------
 		std::ifstream inputFile("../../data/Example1.layout");
 		if (!inputFile) 
 		{
@@ -74,78 +74,80 @@ public:
 			}
 		}
 
+		// ------------------CUBE------------------------
 		m_CubeVA.reset(new VertexArray);
+		float vertices[] = {
+			// Position             // normal
+			// SOUTH                
+			-0.5f, -0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
+			 0.5f, -0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
+			 0.5f,  0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
+			-0.5f,  0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
+
+			// NORTH
+			-0.5f, -0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
+			 0.5f, -0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
+			 0.5f,  0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
+			-0.5f,  0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
+
+			// WEST
+			-0.5f, -0.5f, -0.5f,    -1.0f, 0.0f, 0.0f,
+			-0.5f,  0.5f, -0.5f,    -1.0f, 0.0f, 0.0f,
+			-0.5f,  0.5f,  0.5f,    -1.0f, 0.0f, 0.0f,
+			-0.5f, -0.5f,  0.5f,    -1.0f, 0.0f, 0.0f,
+
+			// EAST
+			 0.5f, -0.5f, -0.5f,    1.0f, 0.0f, 0.0f,
+			 0.5f,  0.5f, -0.5f,    1.0f, 0.0f, 0.0f,
+			 0.5f,  0.5f,  0.5f,    1.0f, 0.0f, 0.0f,
+			 0.5f, -0.5f,  0.5f,    1.0f, 0.0f, 0.0f,
+
+			// TOP
+			-0.5f,  0.5f, -0.5f,    0.0f, 1.0f, 0.0f,
+			-0.5f,  0.5f,  0.5f,    0.0f, 1.0f, 0.0f,
+			 0.5f,  0.5f,  0.5f,    0.0f, 1.0f, 0.0f,
+			 0.5f,  0.5f, -0.5f,    0.0f, 1.0f, 0.0f,
+
+			// BOTTOM
+			-0.5f, -0.5f, -0.5f,    0.0f, -1.0f, 0.0f,
+			-0.5f, -0.5f,  0.5f,    0.0f, -1.0f, 0.0f,
+			 0.5f, -0.5f,  0.5f,    0.0f, -1.0f, 0.0f,
+			 0.5f, -0.5f, -0.5f,    0.0f, -1.0f, 0.0f,
+			
+		};
 		BufferLayout layout = {
 			{ ShaderDataType::Float3, "a_Position" },
             { ShaderDataType::Float3, "a_Normal"}
 		};
-
-		for (const auto &polygon : m_Polygons)
-		{
-			float vertices[] = {
-				polygon.Boundary.BottomLeft.x, 
-				polygon.LayerId,
-				polygon.Boundary.BottomLeft.y,
-				0.0f, 1.0f, 0.0f,
-
-				polygon.Boundary.TopRight.x, 
-				polygon.LayerId,
-				polygon.Boundary.BottomLeft.y,
-				0.0f, 1.0f, 0.0f,
-
-				polygon.Boundary.TopRight.x, 
-				polygon.LayerId,
-				polygon.Boundary.TopRight.y,
-				0.0f, 1.0f, 0.0f,
-
-				polygon.Boundary.BottomLeft.x, 
-				polygon.LayerId,
-				polygon.Boundary.TopRight.y,
-				0.0f, 1.0f, 0.0f,
-			};
-			
-			Ref<VertexBuffer> vertexBuffer;
-			vertexBuffer.reset(new VertexBuffer{ vertices, sizeof(vertices) });
-			vertexBuffer->SetLayout(layout);
-			m_CubeVA->AddVertexBuffer(vertexBuffer);
-		}
-
-		// float vertices[] = {
-		// 	-0.5f, -0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
-		// 	 0.5f, -0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
-		// 	 0.5f,  0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
-		// 	-0.5f,  0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
-		// };
-
-		// float vertices[] = {
-		// 	polygon.Boundary.BottomLeft.x, 
-		// 	polygon.LayerId,
-		// 	polygon.Boundary.BottomLeft.y,
-		// 	0.0f, 1.0f, 0.0f,
-
-		// 	polygon.Boundary.TopRight.x, 
-		// 	polygon.LayerId,
-		// 	polygon.Boundary.BottomLeft.y,
-		// 	0.0f, 1.0f, 0.0f,
-
-		// 	polygon.Boundary.TopRight.x, 
-		// 	polygon.LayerId,
-		// 	polygon.Boundary.TopRight.y,
-		// 	0.0f, 1.0f, 0.0f,
-
-		// 	polygon.Boundary.BottomLeft.x, 
-		// 	polygon.LayerId,
-		// 	polygon.Boundary.TopRight.y,
-		// 	0.0f, 1.0f, 0.0f,
-		// };
-		// Ref<VertexBuffer> vertexBuffer;
-		// vertexBuffer.reset(new VertexBuffer{ vertices, sizeof(vertices) });
-		// vertexBuffer->SetLayout(layout);
-		// m_CubeVA->AddVertexBuffer(vertexBuffer);
+		Ref<VertexBuffer> vertexBuffer;
+		vertexBuffer.reset(new VertexBuffer{vertices, sizeof(vertices)});
+		vertexBuffer->SetLayout(layout);
+		m_CubeVA->AddVertexBuffer(vertexBuffer);
 
 		unsigned int indices[] = {
+			// SOUTH
 			0, 1, 2,
 			0, 2, 3,
+
+			// NORTH
+			4, 5, 6,
+			4, 6, 7,
+
+			// EAST
+			8, 9, 10,
+			8, 10, 11,
+
+			// WEST
+			12, 13, 14,
+			12, 14, 15,
+
+			// TOP
+			16, 17, 18,
+			16, 18, 19,
+
+			// BOTTOM
+			20, 21, 22,
+			20, 22, 23
 		};
 		Ref<IndexBuffer> indexBuffer;
 		indexBuffer.reset(new IndexBuffer{indices, sizeof(indices) / sizeof(unsigned int)});
@@ -174,13 +176,15 @@ public:
         for (int i = 0; i < m_PointLights.size(); i++)
             m_CubeShader->UploadPointLight(i, m_PointLights[i]);
 
-		for (const Ref<VertexBuffer> &vb : m_CubeVA->GetVertexBuffers())
+		for (const auto &polygon : m_Polygons)
 		{
-			vb->Bind();
 			glm::mat4 transform{1.0f};
-			transform = glm::scale(transform, glm::vec3(1.0f/m_ChipBoundary.Width * 10.0f, 1.0f,  1.0f/m_ChipBoundary.Height * 10.0f));
+			float translateX = (polygon.Boundary.BottomLeft.x + polygon.Boundary.TopRight.x) / 2.0f;
+			float translateZ = (polygon.Boundary.BottomLeft.y + polygon.Boundary.TopRight.y) / 2.0f;
+			transform = glm::scale(transform, glm::vec3(1.0f / m_ChipBoundary.Width * 10.0f, 1.0f, 1.0f / m_ChipBoundary.Height * 10.0f));
+			transform = glm::translate(transform, glm::vec3(translateX, polygon.LayerId * 2, translateZ));
+			transform = glm::scale(transform, glm::vec3(polygon.Boundary.Width, 0.2f, polygon.Boundary.Height));
 			Renderer::Submit(m_CubeShader, m_CubeVA, transform);
-			vb->UnBind();
 		}
 
         Renderer::EndScene();
