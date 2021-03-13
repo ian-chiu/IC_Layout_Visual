@@ -18,5 +18,6 @@
 #include "Renderer/RenderCommand.h"
 #include "Renderer/Light.h"
 #include "Renderer/Material.h"
+#include "Renderer/FrustumCull.h"
 
 #include "imgui.h"

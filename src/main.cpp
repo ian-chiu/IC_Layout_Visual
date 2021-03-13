@@ -1,5 +1,5 @@
 #include <iostream>
-#include "LightExp.h"
+#include "3D_Visual.h"
 
 int main()
 {

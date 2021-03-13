@@ -72,27 +72,27 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
     return (ambient + diffuse + specular);
 }
 
-vec3 CalcPointLight(PointLight light, vec3 normal, vec3 viewDir, vec3 fragPos)
-{
-    vec3 lightDir = normalize(light.Position - fragPos);
-    //diffuse shading
-    float diff = max(dot(normal, lightDir), 0.0);
-    //specular shading
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), u_Material.Shininess);
-    // attenuation
-    float distance    = length(light.Position - fragPos);
-    float attenuation = 1.0 / (light.Constant + light.Linear * distance + 
-        light.Quadratic * (distance * distance));    
-    // combine results
-    vec3 ambient = light.Ambient * u_Material.Ambient;
-    vec3 diffuse = light.Diffuse * (diff * u_Material.Diffuse);
-    vec3 specular = light.Specular * (spec * u_Material.Specular);
-    ambient  *= attenuation;
-    diffuse  *= attenuation;
-    specular *= attenuation;
-    return (ambient + diffuse + specular); 
-}
+// vec3 CalcPointLight(PointLight light, vec3 normal, vec3 viewDir, vec3 fragPos)
+// {
+//     vec3 lightDir = normalize(light.Position - fragPos);
+//     //diffuse shading
+//     float diff = max(dot(normal, lightDir), 0.0);
+//     //specular shading
+//     vec3 reflectDir = reflect(-lightDir, normal);
+//     float spec = pow(max(dot(viewDir, reflectDir), 0.0), u_Material.Shininess);
+//     // attenuation
+//     float distance    = length(light.Position - fragPos);
+//     float attenuation = 1.0 / (light.Constant + light.Linear * distance + 
+//         light.Quadratic * (distance * distance));    
+//     // combine results
+//     vec3 ambient = light.Ambient * u_Material.Ambient;
+//     vec3 diffuse = light.Diffuse * (diff * u_Material.Diffuse);
+//     vec3 specular = light.Specular * (spec * u_Material.Specular);
+//     ambient  *= attenuation;
+//     diffuse  *= attenuation;
+//     specular *= attenuation;
+//     return (ambient + diffuse + specular); 
+// }
 
 void main()
 {
@@ -101,8 +101,8 @@ void main()
     // phase1: Directional lighting
     vec3 result = CalcDirLight(u_DirLight, norm, viewDir);
     // phase2:  Point Lights
-    for (int i = 0; i < NR_POINT_LIGHTS; i++) 
-        result += CalcPointLight(u_PointLights[i], norm, viewDir, v_FragPosition);
+    // for (int i = 0; i < NR_POINT_LIGHTS; i++) 
+    //     result += CalcPointLight(u_PointLights[i], norm, viewDir, v_FragPosition);
     // phase3: SpotLight
 
     fragColor = vec4(result, 1.0);

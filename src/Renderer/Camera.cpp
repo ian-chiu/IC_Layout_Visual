@@ -2,10 +2,12 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
-PerspectiveCamera::PerspectiveCamera(float fov, float aspect_ratio)
-:   m_ProjectionMatrix(glm::perspective(fov, aspect_ratio, 0.1f, 100.0f)),
+PerspectiveCamera::PerspectiveCamera(float fov, float aspect_ratio, float near, float far)
+:   m_ProjectionMatrix(glm::perspective(fov, aspect_ratio, near, far)),
     m_FOV(fov),
-    m_AspectRatio(aspect_ratio)
+    m_AspectRatio(aspect_ratio),
+    m_Near(near),
+    m_Far(far)
 {
     m_ViewMatrix = glm::lookAt(m_Position, m_Position + m_Front, m_Up);
     m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
@@ -25,7 +27,7 @@ void PerspectiveCamera::RecalculateViewMatrix()
 
 void PerspectiveCamera::RecalculateProjectionMatrix() 
 {
-    m_ProjectionMatrix = glm::perspective(m_FOV, m_AspectRatio, 0.1f, 100.0f);
+    m_ProjectionMatrix = glm::perspective(m_FOV, m_AspectRatio, m_Near, m_Far);
     m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 }
 
@@ -34,6 +36,12 @@ void PerspectiveCamera::SetPosition(const glm::vec3 &position)
 {
     m_Position = position; 
     RecalculateViewMatrix();
+}
+
+void PerspectiveCamera::setFar(float far) 
+{
+    m_Far = far;
+    RecalculateProjectionMatrix();
 }
 
 void PerspectiveCamera::AddFOV(float offset) 
