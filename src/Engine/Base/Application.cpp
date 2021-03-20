@@ -11,7 +11,7 @@ Application* Application::s_Instance = nullptr;
 
 Application::Application()
 {
-    CORE_ASSERT(!s_Instance, "Application already exists[singleton]!");
+    CORE_ASSERT(!s_Instance, "Application already exists[singleton]!")
     s_Instance = this;
     m_Window = std::make_unique<Window>();
     m_Window->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));

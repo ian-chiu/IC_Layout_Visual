@@ -40,7 +40,7 @@ void VertexArray::Bind()
 
 void VertexArray::UnBind() 
 {
-    glBindVertexArray(0);
+    glBindVertexArray(m_RendererID);
 }
 
 void VertexArray::AddVertexBuffer(const Ref<VertexBuffer> &vertexBuffer) 

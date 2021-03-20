@@ -14,10 +14,12 @@
 #include "Renderer/Shader.h"
 #include "Renderer/Texture.h"
 #include "Renderer/Camera.h"
+#include "Renderer/CameraController.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/RenderCommand.h"
 #include "Renderer/Light.h"
 #include "Renderer/Material.h"
+#include "Renderer/Framebuffer.h"
 #include "Renderer/FrustumCull.h"
 
 #include "imgui.h"
