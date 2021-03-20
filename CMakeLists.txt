@@ -30,7 +30,7 @@ target_link_libraries(learn_opengl
 
 target_include_directories(learn_opengl
     PRIVATE
-        src
+        src/Engine
         vendors/glfw/include 
         vendors/glad/include
         vendors/spdlog/include

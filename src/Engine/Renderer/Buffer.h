@@ -105,7 +105,6 @@ class VertexBuffer
 {
 public:
     VertexBuffer(float *vertices, unsigned int size);
-    // VertexBuffer(const std::vector<float> &vertices);
     ~VertexBuffer();
 
     void Bind() const;

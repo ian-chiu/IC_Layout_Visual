@@ -1,11 +1,12 @@
 #pragma once
 
 #include <glm/glm.hpp>
+
 class PerspectiveCamera
 {
 public:
     PerspectiveCamera() = default;
-    PerspectiveCamera(float fov, float aspect_ratio, float near = 0.1f, float far = 50.0f);
+    PerspectiveCamera(float aspect_ratio, float fov = 45.0f, float near = 0.1f, float far = 50.0f);
 
     inline const glm::mat4& GetViewProjectionMatrix() const { return m_ViewProjectionMatrix; }
     inline const glm::mat4& GetProjectionMatrix() const { return m_ProjectionMatrix; }
@@ -20,6 +21,8 @@ public:
     inline float GetFar() const { return m_Far; }
 
     void SetPosition(const glm::vec3 &position);
+
+    void SetAspectRatio(float aspectRatio);
 
     void setFar(float far);
 

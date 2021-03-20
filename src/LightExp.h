@@ -7,11 +7,6 @@
 #include <gl/GL.h>
 #include <array>
 
-// #include <filesystem>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-
 class ExampleLayer : public Layer
 {
 public:
@@ -28,54 +23,12 @@ public:
         for (PointLight &pointLight : m_PointLights) {
             pointLight = pointLightBase;
         }
-        m_PointLights[0].Position = glm::vec3( 0.0f,  0.0f,  15.0f);
-        m_PointLights[1].Position = glm::vec3( -15.0f, -15.0f, 15.0f);
-        m_PointLights[2].Position = glm::vec3( 15.0f,  -15.0f, 15.0f);
-        m_PointLights[3].Position = glm::vec3( 0.0f,  0.0f, -15.0f);
+        m_PointLights[0].Position = glm::vec3( 0.0f,  0.0f,  10.0f);
+        m_PointLights[1].Position = glm::vec3( -10.0f, -10.0f, 10.0f);
+        m_PointLights[2].Position = glm::vec3( 10.0f,  -10.0f, 10.0f);
+        m_PointLights[3].Position = glm::vec3( 0.0f,  0.0f, -10.0f);
 
-        //----------------------read data---------------------
-		std::ifstream inputFile("../../data/circuit3.cut");
-		if (!inputFile) 
-		{
-			std::cout << "Cannot open input file.\n"; 
-			exit(EXIT_FAILURE);
-		}
-
-		std::string line;
-
-		while (std::getline(inputFile, line))
-		{
-			std::istringstream iss{ line };
-			std::string token;
-			iss >> token;
-			if (token[0] == ';')
-				continue;
-			else if (token == "0")
-			{
-				glm::vec2 bl, tr;
-				iss >> bl.x;
-				iss >> bl.y;
-				iss >> tr.x;
-				iss >> tr.y;
-				m_ChipBoundary.reset(bl, tr);
-			}
-			else 
-			{
-				Polygon polygon;
-				glm::vec2 bl, tr;
-				iss >> bl.x;
-				iss >> bl.y;
-				iss >> tr.x;
-				iss >> tr.y;
-				polygon.Boundary.reset(bl, tr);
-				iss >> polygon.NetId;
-				iss >> polygon.LayerId;
-				iss >> polygon.PolyType;
-				m_Polygons.push_back(polygon);
-			}
-		}
-
-		// ------------------CUBE------------------------
+        //----------------------CUBE---------------------
 		m_CubeVA.reset(new VertexArray);
 		float vertices[] = {
 			// Position             // normal
@@ -158,17 +111,10 @@ public:
 		RenderCommand::Init();
 	}
 
-	virtual void OnAttach() override 
-	{
-		FramebufferSpecification fbSpec;
-		fbSpec.Width = 1280;
-		fbSpec.Height = 720;
-		m_Framebuffer.reset(new Framebuffer(fbSpec));
-	}
-
 	virtual void OnUpdate(Timestep ts) override
 	{
-        m_Framebuffer->Bind();
+		m_Framebuffer->Bind();
+
 		m_CameraController.OnUpdate(ts);
 
         // --------------render----------------------
@@ -184,32 +130,14 @@ public:
         for (int i = 0; i < m_PointLights.size(); i++)
             m_CubeShader->UploadPointLight(i, m_PointLights[i]);
 
-		for (const auto &polygon : m_Polygons)
-		{
-			// float translateY = polygon.LayerId / 100.0f;
-			// float translateX = (polygon.Boundary.BottomLeft.x + polygon.Boundary.TopRight.x - 2 * m_ChipBoundary.BottomLeft.x) / 2.0f / m_ChipBoundary.Width;
-			// float translateZ = (polygon.Boundary.BottomLeft.y + polygon.Boundary.TopRight.y - 2 * m_ChipBoundary.TopRight.y) / 2.0f / m_ChipBoundary.Height;
-			glm::vec3 minp{
-				(polygon.Boundary.BottomLeft.x - m_ChipBoundary.BottomLeft.x) / m_ChipBoundary.Width * m_WorldScale, 
-				(polygon.LayerId / 100.0f - 0.0003f / 2.0f) * m_WorldScale, 
-				(polygon.Boundary.BottomLeft.y - m_ChipBoundary.BottomLeft.y) / m_ChipBoundary.Height * m_WorldScale
-			};
-			glm::vec3 maxp{
-				(polygon.Boundary.TopRight.x - m_ChipBoundary.BottomLeft.x) / m_ChipBoundary.Width * m_WorldScale, 
-				(polygon.LayerId / 100.0f + 0.0003f / 2.0f) * m_WorldScale, 
-				(polygon.Boundary.TopRight.y - m_ChipBoundary.BottomLeft.y) / m_ChipBoundary.Height * m_WorldScale
-			};
-			Frustum currentFrustum{m_CameraController.GetCamera().GetViewProjectionMatrix()};
-			if (currentFrustum.IsBoxVisible(minp, maxp))
-			{
-				// LOG_INFO("BOX VISIBLE!");
-				glm::mat4 transform{1.0f};
-				// transform = glm::scale(transform, glm::vec3(m_WorldScale));
-				transform = glm::translate(transform, (maxp + minp) / 2.0f);
-				transform = glm::scale(transform, maxp - minp);
-				Renderer::Submit(m_CubeShader, m_CubeVA, transform);
-			}
-		}
+		for(unsigned int i = 0; i < 10; i++)
+        {
+            glm::mat4 transform = glm::mat4(1.0f);
+            transform = glm::translate(transform, m_CubePositions[i]);
+            float angle = 20.0f * i; 
+            transform = glm::rotate(transform, (float)glfwGetTime() + glm::radians(angle), glm::vec3(1.0f, 0.5f, 0.5f));
+            Renderer::Submit(m_CubeShader, m_CubeVA, transform);
+        }
 
         Renderer::EndScene();
 		m_Framebuffer->Unbind();
@@ -218,6 +146,14 @@ public:
 	virtual void OnEvent(Event& e) override
 	{
 		m_CameraController.OnEvent(e);
+	}
+
+	virtual void OnAttach() override 
+	{
+		FramebufferSpecification fbSpec;
+		fbSpec.Width = 1280;
+		fbSpec.Height = 720;
+		m_Framebuffer.reset(new Framebuffer(fbSpec));
 	}
 
     virtual void OnImGuiRender() override
@@ -279,23 +215,8 @@ public:
 			ImGui::EndMenuBar();
 		}
 
-		ImGui::Begin("Settings");
-		float speed = m_CameraController.GetTranslationSpeed();
-		if (ImGui::DragFloat("Camera Speed", &speed, 1.0f, 1.0f, 100000.0f))
-		{
-			m_CameraController.SetTranslationSpeed(speed);
-		}
-		if (ImGui::DragFloat("World Scale", &m_WorldScale, 1.0f, 0.1f, 100000.0f))
-		{
-			// m_Camera.setFar(m_WorldScale / 2.0f);
-		}
-		float far = m_CameraController.GetCamera().GetFar();
-		if (ImGui::DragFloat("Far", &far, 1.0f, 0.1f, 100000.0f))
-		{
-			m_CameraController.GetCamera().setFar(far);
-		}
-		ImGui::End();
-
+		// ImGui::Begin("Settings");
+		// ImGui::DragFloat("Camera Speed", &m_CameraMoveSpeed, m_CameraMoveSpeed);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 		ImGui::Begin("Viewport");
 		ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
@@ -316,56 +237,41 @@ public:
 
 private:
 	Ref<Framebuffer> m_Framebuffer;
-	PerspectiveCameraController m_CameraController;
-	glm::vec2 m_ViewportSize;
 
 	Ref<VertexArray> m_CubeVA;
     Ref<Shader> m_CubeShader;
 	Material m_Material{
-		{ 201.0f / 255.0f, 159.0f / 255.0f, 105.0f / 255.0f },
-		{ 201.0f / 255.0f, 159.0f / 255.0f, 105.0f / 255.0f },
-		{ 0.5f, 0.5f, 0.5f },
-		8.0f
+		{ 1.0f, 0.5f, 0.31f },
+		{ 1.0f, 0.5f, 0.31f },
+		{ 0.2f, 0.2f, 0.2f },
+		32.0f
 	};
 
     DirLight m_DirLight{
         { -0.2f, -1.0f, -0.3f },
 		{ 0.2f, 0.2f, 0.2f },
-		{ 0.7f, 0.7f, 0.7f },
+		{ 0.5f, 0.5f, 0.5f },
 		{ 1.0f, 1.0f, 1.0f }
     };
 
     std::array<PointLight, 4> m_PointLights;
 
-	struct Boundary
-	{
-		Boundary() = default;
-		Boundary(glm::vec2 bl, glm::vec2 tr)
-			: BottomLeft(bl), TopRight(tr), Width(tr.x - bl.x), Height(tr.y - bl.y)
-		{
-		}
-		void reset(glm::vec2 bl, glm::vec2 tr)
-		{
-			BottomLeft = bl;
-			TopRight = tr;
-			Width = tr.x - bl.x;
-			Height = tr.y - bl.y;
-		}
-		glm::vec2 BottomLeft;
-		glm::vec2 TopRight;
-		float Width;
-		float Height;
+    PerspectiveCameraController m_CameraController;
+
+	glm::vec2 m_ViewportSize;
+
+	std::vector<glm::vec3> m_CubePositions{
+		glm::vec3( 0.0f,  0.0f,  0.0f), 
+		glm::vec3( 2.0f,  5.0f, -15.0f), 
+		glm::vec3(-1.5f, -2.2f, -2.5f),  
+		glm::vec3(-3.8f, -2.0f, -15.0f),  
+		glm::vec3( 2.4f, -0.4f, -3.5f),  
+		glm::vec3(-1.7f,  3.0f, -7.5f),  
+		glm::vec3( 1.3f, -2.0f, -2.5f),  
+		glm::vec3( 1.5f,  2.0f, -2.5f), 
+		glm::vec3( 1.5f,  0.2f, -1.5f), 
+		glm::vec3(-1.3f,  1.0f, -1.5f)  
 	};
-	struct Polygon
-	{
-		Boundary Boundary;
-		int NetId;
-		int LayerId;
-		std::string PolyType;
-	};
-	std::vector<Polygon> m_Polygons;
-	Boundary m_ChipBoundary;
-	float m_WorldScale = 100.0f;
 };
 
 class Sandbox : public Application
