@@ -44,7 +44,7 @@ void PerspectiveCamera::SetAspectRatio(float aspectRatio)
     RecalculateViewMatrix();
 }
 
-void PerspectiveCamera::setFar(float far) 
+void PerspectiveCamera::SetFar(float far) 
 {
     m_Far = far;
     RecalculateProjectionMatrix();

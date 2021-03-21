@@ -24,7 +24,7 @@ public:
 
     void SetAspectRatio(float aspectRatio);
 
-    void setFar(float far);
+    void SetFar(float far);
 
     void SetFOV(float fov);
     void AddFOV(float offset);

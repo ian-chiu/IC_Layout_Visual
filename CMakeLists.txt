@@ -10,6 +10,7 @@ add_subdirectory(vendors/spdlog)
 add_subdirectory(vendors/glm)
 add_subdirectory(vendors/imgui)
 add_subdirectory(vendors/sqlite3)
+add_subdirectory(vendors/nativefiledialog-cmake)
 
 file(GLOB_RECURSE learn_opengl_SRC src/*.cpp src/*.h)
 
@@ -28,6 +29,7 @@ target_link_libraries(learn_opengl
         glm
         imgui
         sqlite3
+        nativefiledialog
 )
 
 target_include_directories(learn_opengl
@@ -42,12 +44,14 @@ target_include_directories(learn_opengl
         vendors/imgui
         vendors/sqlite3
         vendors/sqlite_modern_cpp/hdr
+        vendors/nativefiledialog-cmake/src/include
 )
 
 target_compile_definitions(learn_opengl
     PRIVATE 
         STB_IMAGE_IMPLEMENTATION
         GLFW_INCLUDE_NONE
+        ISOLATION_AWARE_ENABLED
 )
 
 # get_cmake_property(_variableNames VARIABLES)

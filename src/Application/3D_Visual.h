@@ -7,13 +7,15 @@
 #include <gl/GL.h>
 #include <array>
 
-// #include <filesystem>
+#include <filesystem>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 
 #include "FrustumCull.h"
 #include "LayoutDatabase.h"
+
+#include "nfd.h"
 
 class ExampleLayer : public Layer
 {
@@ -22,10 +24,10 @@ public:
 		: Layer("Example"), m_CameraController(1280.0f / 720.0f)
 	{
         //----------------------read data---------------------
-		database.connect("circuit3.db");
-		database.get_all_polygons(m_Polygons);
-		database.get_chip_boundary(m_ChipBoundary);
-		// database.filter_layer(m_Polygons, 9);
+		// m_Database.connect("circuit3.db");
+		// m_Database.get_all_polygons(m_Polygons);
+		// m_Database.get_chip_boundary(m_ChipBoundary);
+		// m_Database.filter_layer(m_Polygons, 9);
 
 		// ------------------CUBE------------------------
 		m_CubeVA.reset(new VertexArray);
@@ -220,9 +222,63 @@ public:
 		{
 			if (ImGui::BeginMenu("File"))
 			{
-				// Disabling fullscreen would allow the window to be moved to the front of other windows, 
-				// which we can't undo at the moment without finer window depth/z control.
-				//ImGui::MenuItem("Fullscreen", NULL, &opt_fullscreen_persistant);
+				if (ImGui::MenuItem("Import"))
+				{
+					nfdchar_t *nfd_file_path = NULL;
+					nfdresult_t result = NFD_OpenDialog( "db", NULL, &nfd_file_path );
+					if ( result == NFD_OKAY )
+					{
+						fs::path db_path{nfd_file_path};
+						std::string db_name = db_path.stem().string() + ".db";
+						m_Database.connect(db_name);
+						m_Database.get_all_polygons(m_Polygons);
+						m_Database.get_chip_boundary(m_ChipBoundary);
+					}
+					else if ( result == NFD_CANCEL )
+					{
+						// puts("User pressed cancel.");
+					}
+					else 
+					{
+						printf("Error: %s\n", NFD_GetError() );
+						std::exit(-1);
+					}
+				}
+				ImGui::EndMenu();
+			}
+
+			if (ImGui::BeginMenu("Tools"))
+			{
+				if (ImGui::MenuItem("Create Database from Layout"))
+				{
+					nfdchar_t *nfd_file_path = NULL;
+					nfdresult_t result = NFD_OpenDialog( "cut", NULL, &nfd_file_path );
+					if ( result == NFD_OKAY )
+					{
+						fs::path input_file_path{nfd_file_path};
+						std::string db_name = input_file_path.stem().string() + ".db";
+						if (!m_Database.exists(db_name))
+						{
+							m_Database.create_database(db_name);
+							m_Database.write_from_layout(input_file_path);
+						}
+						else
+						{
+							LOG_WARN(db_name + " is already existed! Rewrite data from layout file.");
+							m_Database.connect(db_name);
+							m_Database.write_from_layout(input_file_path);
+						}
+					}
+					else if ( result == NFD_CANCEL )
+					{
+						// puts("User pressed cancel.");
+					}
+					else 
+					{
+						printf("Error: %s\n", NFD_GetError() );
+						std::exit(-1);
+					}
+				}
 				ImGui::EndMenu();
 			}
 
@@ -242,12 +298,20 @@ public:
 		float far = m_CameraController.GetCamera().GetFar();
 		if (ImGui::DragFloat("Far", &far, 1.0f, 0.1f, 100000.0f))
 		{
-			m_CameraController.GetCamera().setFar(far);
+			m_CameraController.GetCamera().SetFar(far);
 		}
+		// static int clicked = 0;
+		// if (ImGui::Button("Reset Camera Position"))
+        //     clicked++;
+        // if (clicked & 1)
+        // {
+        //     m_CameraController.GetCamera().SetPosition(glm::vec3(0.0f));
+        // }
 		ImGui::End();
-
+		
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 		ImGui::Begin("Viewport");
+		ImGui::PopStyleVar();
 		ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
 		if (m_ViewportSize != *((glm::vec2*)&viewportPanelSize))
 		{
@@ -258,8 +322,10 @@ public:
 		}
 		uint32_t textureID = m_Framebuffer->GetColorAttachmentRendererID();
 		ImGui::Image((void*)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
-		ImGui::PopStyleVar();
+		
 		ImGui::End();
+
+		// ImGui::ShowDemoWindow();
 
 		ImGui::End();
 	}
@@ -285,7 +351,7 @@ private:
 		{ 1.0f, 1.0f, 1.0f }
     };
 
-	LayoutDatabase database;
+	LayoutDatabase m_Database;
 	std::vector<Polygon> m_Polygons;
 	Boundary m_ChipBoundary;
 	float m_WorldScale = 100.0f;

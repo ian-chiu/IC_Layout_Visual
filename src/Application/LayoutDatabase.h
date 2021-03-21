@@ -1,6 +1,5 @@
 #pragma once
 
-#include <memory>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -29,5 +28,5 @@ public:
     bool exists(const std::string &db_name);
 
 private:
-    std::unique_ptr<sqlite::database> m_database_ptr;
+    fs::path m_DatabasePath;
 };
