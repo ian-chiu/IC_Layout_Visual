@@ -20,6 +20,5 @@
 #include "Renderer/Light.h"
 #include "Renderer/Material.h"
 #include "Renderer/Framebuffer.h"
-#include "Renderer/FrustumCull.h"
 
 #include "imgui.h"

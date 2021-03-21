@@ -1,5 +1,0 @@
-0 0 100 80                  ; chip boundary
-1 60 0 100 10 2 1 Normal    ; A normal polygon on layer 1 (net 2: power)
-2 0 40 100 50 1 1 Normal    ; A normal polygon on layer 1 (net 1: critical net)
-3 0 40 10 80 1 2 Normal     ; A normal polygon on layer 2 (net 1: critical net)
-4 60 0 70 80 2 2 Normal     ; A normal polygon on layer 2 (net 2: power)

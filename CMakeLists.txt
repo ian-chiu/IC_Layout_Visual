@@ -9,6 +9,7 @@ add_subdirectory(vendors/glad)
 add_subdirectory(vendors/spdlog)
 add_subdirectory(vendors/glm)
 add_subdirectory(vendors/imgui)
+add_subdirectory(vendors/sqlite3)
 
 file(GLOB_RECURSE learn_opengl_SRC src/*.cpp src/*.h)
 
@@ -26,17 +27,21 @@ target_link_libraries(learn_opengl
         spdlog
         glm
         imgui
+        sqlite3
 )
 
 target_include_directories(learn_opengl
     PRIVATE
         src/Engine
+        src/Application
         vendors/glfw/include 
         vendors/glad/include
         vendors/spdlog/include
         vendors/glm
         vendors/stb_image
         vendors/imgui
+        vendors/sqlite3
+        vendors/sqlite_modern_cpp/hdr
 )
 
 target_compile_definitions(learn_opengl
