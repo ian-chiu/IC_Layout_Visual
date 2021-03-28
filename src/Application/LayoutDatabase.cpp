@@ -7,7 +7,7 @@
 #include "LayoutDatabase.h"
 #include "sqlite_modern_cpp.h"
 
-void LayoutDatabase::create_database(const std::string &db_name)
+void LayoutDatabase::createDataBase(const std::string &db_name)
 {
     m_DatabasePath.assign("../../database/" + db_name);
     sqlite::database db(m_DatabasePath.string());
@@ -31,18 +31,18 @@ void LayoutDatabase::create_database(const std::string &db_name)
                 ");";   
 }
 
-void LayoutDatabase::connect(const std::string &db_name)
+void LayoutDatabase::Connect(const std::string &db_name)
 {
     m_DatabasePath.assign("../../database/" + db_name);
 }
 
-void LayoutDatabase::get_all_polygons(std::vector<Polygon> &polygons)
+void LayoutDatabase::GetAllPolygons(std::vector<Polygon> &polygons)
 {
     polygons.clear();
     sqlite::database db(m_DatabasePath.string());
     int id, blx, blz, trx, trz, netid, layerid;
     std::string poly_type;
-    db << u"SELECT ID,BL_X,BL_Z,TR_X,TR_Z,NET_ID,LAYER_ID,TYPE FROM POLYGONS;" >>  
+    db << u"SELECT * FROM POLYGONS;" >>  
         [&](int id, int blx, int blz, int trx, int trz, int netid, int layerid, const std::string &poly_type) {
             Polygon polygon;
             polygon.NetId = netid;
@@ -55,12 +55,12 @@ void LayoutDatabase::get_all_polygons(std::vector<Polygon> &polygons)
         };
 }
 
-void LayoutDatabase::get_chip_boundary(Boundary &boundary) 
+void LayoutDatabase::GetChipBoundary(Boundary &boundary) 
 {
     sqlite::database db(m_DatabasePath.string());
     int blx, blz, trx, trz;
     std::string poly_type;
-    db << u"SELECT BL_X,BL_Z,TR_X,TR_Z FROM CHIP_BOUNDARY;" >>  
+    db << u"SELECT * FROM CHIP_BOUNDARY;" >>  
         [&](int blx, int blz, int trx, int trz) {
             glm::vec2 bl(blx, blz);
             glm::vec2 tr(trx, trz);
@@ -68,25 +68,52 @@ void LayoutDatabase::get_chip_boundary(Boundary &boundary)
         };
 }
 
-void LayoutDatabase::filter_layer(std::vector<Polygon> &buffer, int layerId)
+int LayoutDatabase::GetLayerCount() 
 {
     sqlite::database db(m_DatabasePath.string());
-    int id, blx, blz, trx, trz, netid, layerid;
+    int result;
+    db << "SELECT MAX(LAYER_ID) FROM POLYGONS;" >> result;
+    return result;
+}
+
+void LayoutDatabase::FilterLayers(std::vector<Polygon> &polygons, const std::vector<bool> &layerIdSet)
+{
+    polygons.clear();
+
+    std::vector<int> filterIds{};
+    for (int i = 0; i < layerIdSet.size(); i++)
+        if (layerIdSet[i])
+            filterIds.push_back(i + 1);
+
+    if (filterIds.empty())
+        return;
+    
+    sqlite::database db(m_DatabasePath.string());
+    int id, blx, blz, trx, trz, netId, layerId;
     std::string poly_type;
-    db << u"SELECT ID,BL_X,BL_Z,TR_X,TR_Z,NET_ID,LAYER_ID,TYPE FROM POLYGONS WHERE LAYER_ID == ?;" << layerId >>  
-        [&](int id, int blx, int blz, int trx, int trz, int netid, int layerid, const std::string &poly_type) {
+
+    std::string query = "SELECT * FROM POLYGONS WHERE LAYER_ID IN (?";
+    for (int i = 0; i < filterIds.size() - 1; i++)
+        query += ",?";
+    query += ");";
+
+    auto ps = db << query;
+    for (int id : filterIds)
+        ps << id;
+
+    ps >> [&](int id, int blx, int blz, int trx, int trz, int netId, int layerId, const std::string &poly_type) {
             Polygon polygon;
-            polygon.NetId = netid;
-            polygon.LayerId = layerid;
+            polygon.NetId = netId;
+            polygon.LayerId = layerId;
             polygon.PolyType = poly_type;
             glm::vec2 bl(blx, blz);
             glm::vec2 tr(trx, trz);
             polygon.Boundary.reset(bl, tr);
-            buffer.push_back(polygon);
+            polygons.push_back(polygon);
         };
 }
 
-void LayoutDatabase::write_from_layout(const fs::path &layout_file_path)
+void LayoutDatabase::WriteFromLayout(const fs::path &layout_file_path)
 {
     sqlite::database db(m_DatabasePath.string());
 
@@ -141,12 +168,10 @@ void LayoutDatabase::write_from_layout(const fs::path &layout_file_path)
     {
         std::cerr << e.what() << '\n';
         LOG_ERROR("Fail to write layout!");
-        // db << "DELETE FROM POLYGONS;";
-        // db << "DELETE FROM CHIP_BOUNDARY;";
     }
 }
 
-bool LayoutDatabase::exists(const std::string &db_name)
+bool LayoutDatabase::Exists(const std::string &db_name)
 {
     for (const auto &entry : fs::directory_iterator("../../database")) 
         if (entry.path().filename().string() == db_name)

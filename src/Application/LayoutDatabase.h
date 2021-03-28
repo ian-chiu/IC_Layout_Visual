@@ -13,19 +13,21 @@ class LayoutDatabase
 public:
     LayoutDatabase() = default;
 
-    void create_database(const std::string &db_name);
+    void createDataBase(const std::string &db_name);
 
-    void connect(const std::string &db_name);
+    void Connect(const std::string &db_name);
 
-    void get_all_polygons(std::vector<Polygon> &polygons);
+    void GetAllPolygons(std::vector<Polygon> &polygons);
 
-    void get_chip_boundary(Boundary &boundary);
+    void GetChipBoundary(Boundary &boundary);
 
-    void filter_layer(std::vector<Polygon> &buffer, int layerId);
+    int GetLayerCount();
 
-    void write_from_layout(const fs::path &layout_file_path);
+    void FilterLayers(std::vector<Polygon> &buffer, const std::vector<bool> &layerIdSet);
 
-    bool exists(const std::string &db_name);
+    void WriteFromLayout(const fs::path &layout_file_path);
+
+    bool Exists(const std::string &db_name);
 
 private:
     fs::path m_DatabasePath;

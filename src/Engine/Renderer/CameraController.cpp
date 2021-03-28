@@ -67,6 +67,11 @@ void PerspectiveCameraController::SetTranslationSpeed(float speed)
     m_CameraTranslationSpeed = speed;
 }
 
+void PerspectiveCameraController::SetCameraPosition(const glm::vec3 &position) 
+{
+    m_CameraPosition = position;
+}
+
 bool PerspectiveCameraController::OnMouseScrolled(MouseScrolledEvent& e)
 {
     float yoffset = e.GetYOffset();

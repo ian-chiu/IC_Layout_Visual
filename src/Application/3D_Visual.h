@@ -23,12 +23,6 @@ public:
 	ExampleLayer()
 		: Layer("Example"), m_CameraController(1280.0f / 720.0f)
 	{
-        //----------------------read data---------------------
-		// m_Database.connect("circuit3.db");
-		// m_Database.get_all_polygons(m_Polygons);
-		// m_Database.get_chip_boundary(m_ChipBoundary);
-		// m_Database.filter_layer(m_Polygons, 9);
-
 		// ------------------CUBE------------------------
 		m_CubeVA.reset(new VertexArray);
 		float vertices[] = {
@@ -124,6 +118,7 @@ public:
 	{
         m_Framebuffer->Bind();
 		m_CameraController.OnUpdate(ts);
+		m_DirLight.Direction = m_CameraController.GetCamera().GetFront();
 
         // --------------render----------------------
 		RenderCommand::SetClearColor(glm::vec4(m_DirLight.Diffuse, 1));
@@ -138,18 +133,15 @@ public:
 
 		for (const auto &polygon : m_Polygons)
 		{
-			// float translateY = polygon.LayerId / 100.0f;
-			// float translateX = (polygon.Boundary.BottomLeft.x + polygon.Boundary.TopRight.x - 2 * m_ChipBoundary.BottomLeft.x) / 2.0f / m_ChipBoundary.Width;
-			// float translateZ = (polygon.Boundary.BottomLeft.y + polygon.Boundary.TopRight.y - 2 * m_ChipBoundary.TopRight.y) / 2.0f / m_ChipBoundary.Height;
 			glm::vec3 minp{
-				(polygon.Boundary.BottomLeft.x - m_ChipBoundary.BottomLeft.x) / m_ChipBoundary.Width * m_WorldScale, 
-				(polygon.LayerId / 100.0f - 0.0005 / 2.0f) * m_WorldScale, 
-				(polygon.Boundary.BottomLeft.y - m_ChipBoundary.BottomLeft.y) / m_ChipBoundary.Height * m_WorldScale
+				(polygon.Boundary.BottomLeft.x - m_ChipBoundary.BottomLeft.x) / m_ChipBoundary.Max * m_WorldScale, 
+				(polygon.LayerId / 100.0f - 0.0003 / 2.0f) * m_WorldScale, 
+				(polygon.Boundary.BottomLeft.y - m_ChipBoundary.BottomLeft.y) / m_ChipBoundary.Max * m_WorldScale
 			};
 			glm::vec3 maxp{
-				(polygon.Boundary.TopRight.x - m_ChipBoundary.BottomLeft.x) / m_ChipBoundary.Width * m_WorldScale, 
-				(polygon.LayerId / 100.0f + 0.0005 / 2.0f) * m_WorldScale, 
-				(polygon.Boundary.TopRight.y - m_ChipBoundary.BottomLeft.y) / m_ChipBoundary.Height * m_WorldScale
+				(polygon.Boundary.TopRight.x - m_ChipBoundary.BottomLeft.x) / m_ChipBoundary.Max * m_WorldScale, 
+				(polygon.LayerId / 100.0f + 0.0003 / 2.0f) * m_WorldScale, 
+				(polygon.Boundary.TopRight.y - m_ChipBoundary.BottomLeft.y) / m_ChipBoundary.Max * m_WorldScale
 			};
 			Frustum currentFrustum{m_CameraController.GetCamera().GetViewProjectionMatrix()};
 			if (currentFrustum.IsBoxVisible(minp, maxp))
@@ -230,9 +222,14 @@ public:
 					{
 						fs::path db_path{nfd_file_path};
 						std::string db_name = db_path.stem().string() + ".db";
-						m_Database.connect(db_name);
-						m_Database.get_all_polygons(m_Polygons);
-						m_Database.get_chip_boundary(m_ChipBoundary);
+						m_Database.Connect(db_name);
+						m_Database.GetAllPolygons(m_Polygons);
+						m_Database.GetChipBoundary(m_ChipBoundary);
+						glm::vec3 cameraPosition = glm::vec3(m_ChipBoundary.Width / m_ChipBoundary.Max / 2.0f, 0.15, m_ChipBoundary.Height / m_ChipBoundary.Max / 2.0f) * m_WorldScale;
+						m_CameraController.SetCameraPosition(cameraPosition);
+						m_CameraController.GetCamera().SetPitch(-90.0f);
+						m_CameraController.GetCamera().SetYaw(0.0f);
+						m_LayerIdSet.resize(m_Database.GetLayerCount(), true);
 					}
 					else if ( result == NFD_CANCEL )
 					{
@@ -257,16 +254,16 @@ public:
 					{
 						fs::path input_file_path{nfd_file_path};
 						std::string db_name = input_file_path.stem().string() + ".db";
-						if (!m_Database.exists(db_name))
+						if (!m_Database.Exists(db_name))
 						{
-							m_Database.create_database(db_name);
-							m_Database.write_from_layout(input_file_path);
+							m_Database.createDataBase(db_name);
+							m_Database.WriteFromLayout(input_file_path);
 						}
 						else
 						{
 							LOG_WARN(db_name + " is already existed! Rewrite data from layout file.");
-							m_Database.connect(db_name);
-							m_Database.write_from_layout(input_file_path);
+							m_Database.Connect(db_name);
+							m_Database.WriteFromLayout(input_file_path);
 						}
 					}
 					else if ( result == NFD_CANCEL )
@@ -300,6 +297,43 @@ public:
 		{
 			m_CameraController.GetCamera().SetFar(far);
 		}
+
+		bool layerIdSet[256] = { false };
+		for (int i = 0; i < m_LayerIdSet.size(); i++)
+		{
+			layerIdSet[i] = m_LayerIdSet[i];
+		}
+		ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+		if (ImGui::TreeNode("Layers"))
+		{
+			for (int i = 0; i < m_LayerIdSet.size(); i++)
+			{
+				std::string label = "Layer " + std::to_string(i + 1);
+				ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+				if (ImGui::TreeNode(label.c_str()))
+				{
+					if (ImGui::Checkbox("show", &layerIdSet[i]))
+					{
+						m_LayerIdSet[i] = layerIdSet[i];
+						m_Database.FilterLayers(m_Polygons, m_LayerIdSet);
+					}
+					ImGui::TreePop();
+				}
+			}
+			ImGui::TreePop();
+		}
+		
+		// static bool test = false;
+		// if (ImGui::Checkbox("show", &test));
+		// const char* items[] = { "all", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+		// static int item_current = 0;
+		// if (ImGui::Combo("Layer ID", &item_current, items, IM_ARRAYSIZE(items)))
+		// {
+		// 	if (item_current != 0)
+		// 		m_Database.FilterLayer(m_Polygons, item_current);
+		// 	else
+		// 		m_Database.GetAllPolygons(m_Polygons);
+		// }
 		// static int clicked = 0;
 		// if (ImGui::Button("Reset Camera Position"))
         //     clicked++;
@@ -307,6 +341,7 @@ public:
         // {
         //     m_CameraController.GetCamera().SetPosition(glm::vec3(0.0f));
         // }
+		
 		ImGui::End();
 		
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
@@ -325,7 +360,7 @@ public:
 		
 		ImGui::End();
 
-		// ImGui::ShowDemoWindow();
+		ImGui::ShowDemoWindow();
 
 		ImGui::End();
 	}
@@ -340,13 +375,13 @@ private:
 	Material m_Material{
 		{ 201.0f / 255.0f, 159.0f / 255.0f, 105.0f / 255.0f },
 		{ 201.0f / 255.0f, 159.0f / 255.0f, 105.0f / 255.0f },
-		{ 0.5f, 0.5f, 0.5f },
+		{ 0.3f, 0.3f, 0.3f },
 		8.0f
 	};
 
     DirLight m_DirLight{
         { -0.2f, -1.0f, -0.3f },
-		{ 0.2f, 0.2f, 0.2f },
+		{ 0.4f, 0.4f, 0.4f },
 		{ 0.7f, 0.7f, 0.7f },
 		{ 1.0f, 1.0f, 1.0f }
     };
@@ -355,6 +390,7 @@ private:
 	std::vector<Polygon> m_Polygons;
 	Boundary m_ChipBoundary;
 	float m_WorldScale = 100.0f;
+	std::vector<bool> m_LayerIdSet;
 };
 
 class Sandbox : public Application
