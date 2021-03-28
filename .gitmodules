@@ -11,3 +11,9 @@
 	path = vendors/imgui
 	url = https://github.com/ian-chiu/imgui
 	branch = docking
+[submodule "vendors/nativefiledialog-cmake"]
+	path = vendors/nativefiledialog-cmake
+	url = https://github.com/Vita3K/nativefiledialog-cmake.git
+[submodule "vendors/sqlite_modern_cpp"]
+	path = vendors/sqlite_modern_cpp
+	url = https://github.com/SqliteModernCpp/sqlite_modern_cpp.git
