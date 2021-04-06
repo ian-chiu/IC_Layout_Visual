@@ -1,3 +1,5 @@
+// create data base file in another thread and logging window
+// subwindow 2d
 #pragma once
 
 #include "Engine.h"
@@ -128,11 +130,18 @@ public:
 
         m_CubeShader->Bind();
 		m_CubeShader->UploadUniformFloat3("u_CameraPosition", m_CameraController.GetCamera().GetPosition());
-		m_CubeShader->UploadMaterial(m_Material);
         m_CubeShader->UploadDirLight(m_DirLight);
+		m_CubeShader->UploadMaterial(m_Material);
 
+		int currentLayerId = 0;
 		for (const auto &polygon : m_Polygons)
 		{
+			if (currentLayerId != polygon.LayerId) 
+			{
+				m_CubeShader->UploadMaterial(m_LayerColors[polygon.LayerId - 1]);
+				currentLayerId = polygon.LayerId;
+			}
+			
 			glm::vec3 minp{
 				(polygon.Boundary.BottomLeft.x - m_ChipBoundary.BottomLeft.x) / m_ChipBoundary.Max * m_WorldScale, 
 				(polygon.LayerId / 100.0f - 0.0003 / 2.0f) * m_WorldScale, 
@@ -230,6 +239,7 @@ public:
 						m_CameraController.GetCamera().SetPitch(-90.0f);
 						m_CameraController.GetCamera().SetYaw(0.0f);
 						m_LayerIdSet.resize(m_Database.GetLayerCount(), true);
+						m_LayerColors.resize(m_Database.GetLayerCount(), m_Material);
 					}
 					else if ( result == NFD_CANCEL )
 					{
@@ -299,9 +309,13 @@ public:
 		}
 
 		bool layerIdSet[256] = { false };
+		float layerColors[256][3] = { 0.0f };
 		for (int i = 0; i < m_LayerIdSet.size(); i++)
 		{
 			layerIdSet[i] = m_LayerIdSet[i];
+			layerColors[i][0] = m_LayerColors[i].Diffuse.r;
+			layerColors[i][1] = m_LayerColors[i].Diffuse.g;
+			layerColors[i][2] = m_LayerColors[i].Diffuse.b;
 		}
 		ImGui::SetNextItemOpen(true, ImGuiCond_Once);
 		if (ImGui::TreeNode("Layers"))
@@ -316,6 +330,16 @@ public:
 					{
 						m_LayerIdSet[i] = layerIdSet[i];
 						m_Database.FilterLayers(m_Polygons, m_LayerIdSet);
+					}
+					ImGui::SameLine();
+					if (ImGui::ColorEdit3("Color", (float*)&layerColors[i], ImGuiColorEditFlags_NoInputs))
+					{
+						m_LayerColors[i].Diffuse.r = layerColors[i][0];
+						m_LayerColors[i].Diffuse.g = layerColors[i][1];
+						m_LayerColors[i].Diffuse.b = layerColors[i][2];
+						m_LayerColors[i].Ambient.r = layerColors[i][0];
+						m_LayerColors[i].Ambient.g = layerColors[i][1];
+						m_LayerColors[i].Ambient.b = layerColors[i][2];
 					}
 					ImGui::TreePop();
 				}
@@ -364,6 +388,11 @@ public:
 
 		ImGui::End();
 	}
+private:
+	// auto ColorFromBytes = [](uint8_t r, uint8_t g, uint8_t b)
+	// {
+	// 	return ImVec4((float)r / 255.0f, (float)g / 255.0f, (float)b / 255.0f, 1.0f);
+	// };
 
 private:
 	Ref<Framebuffer> m_Framebuffer;
@@ -391,6 +420,7 @@ private:
 	Boundary m_ChipBoundary;
 	float m_WorldScale = 100.0f;
 	std::vector<bool> m_LayerIdSet;
+	std::vector<Material> m_LayerColors;
 };
 
 class Sandbox : public Application
