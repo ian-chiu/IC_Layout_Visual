@@ -115,22 +115,22 @@ void LayoutDatabase::FilterLayers(std::vector<Polygon> &polygons, const std::vec
 
 void LayoutDatabase::WriteFromLayout(const fs::path &layout_file_path)
 {
-    sqlite::database db(m_DatabasePath.string());
-
-    db << "DELETE FROM POLYGONS;";
-    db << "DELETE FROM CHIP_BOUNDARY;";
-
-    std::ifstream inputFile(layout_file_path);
-    if (!inputFile) 
-    {
-        std::cout << "Cannot open input file.\n"; 
-        exit(EXIT_FAILURE);
-    }
-
-    std::string line;
-
     try
     {
+        sqlite::database db(m_DatabasePath.string());
+
+        db << "DELETE FROM POLYGONS;";
+        db << "DELETE FROM CHIP_BOUNDARY;";
+
+        std::ifstream inputFile(layout_file_path);
+        if (!inputFile) 
+        {
+            std::cout << "Cannot open input file.\n"; 
+            exit(EXIT_FAILURE);
+        }
+
+        std::string line;
+
         db << "begin;";
 
         while (std::getline(inputFile, line))

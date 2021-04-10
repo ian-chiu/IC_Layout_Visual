@@ -8,16 +8,138 @@
 #include <glad/glad.h>
 #include <gl/GL.h>
 #include <array>
-
 #include <filesystem>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 
+#include <thread>
+
 #include "FrustumCull.h"
 #include "LayoutDatabase.h"
 
 #include "nfd.h"
+
+struct ExampleAppLog
+{
+    ImGuiTextBuffer     Buf;
+    ImGuiTextFilter     Filter;
+    ImVector<int>       LineOffsets; // Index to lines offset. We maintain this with AddLog() calls.
+    bool                AutoScroll;  // Keep scrolling if already at the bottom.
+
+    ExampleAppLog()
+    {
+        AutoScroll = true;
+        Clear();
+    }
+
+    void    Clear()
+    {
+        Buf.clear();
+        LineOffsets.clear();
+        LineOffsets.push_back(0);
+    }
+
+    void    AddLog(const char* fmt, ...) IM_FMTARGS(2)
+    {
+        int old_size = Buf.size();
+        va_list args;
+        va_start(args, fmt);
+        Buf.appendfv(fmt, args);
+        va_end(args);
+        for (int new_size = Buf.size(); old_size < new_size; old_size++)
+            if (Buf[old_size] == '\n')
+                LineOffsets.push_back(old_size + 1);
+    }
+
+    void    Draw(const char* title, bool* p_open = NULL)
+    {
+        if (!ImGui::Begin(title, p_open))
+        {
+            ImGui::End();
+            return;
+        }
+
+        // Options menu
+        if (ImGui::BeginPopup("Options"))
+        {
+            ImGui::Checkbox("Auto-scroll", &AutoScroll);
+            ImGui::EndPopup();
+        }
+
+        // Main window
+        if (ImGui::Button("Options"))
+            ImGui::OpenPopup("Options");
+        ImGui::SameLine();
+        bool clear = ImGui::Button("Clear");
+        ImGui::SameLine();
+        bool copy = ImGui::Button("Copy");
+        ImGui::SameLine();
+        Filter.Draw("Filter", -100.0f);
+
+        ImGui::Separator();
+        ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+
+        if (clear)
+            Clear();
+        if (copy)
+            ImGui::LogToClipboard();
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+        const char* buf = Buf.begin();
+        const char* buf_end = Buf.end();
+        if (Filter.IsActive())
+        {
+            // In this example we don't use the clipper when Filter is enabled.
+            // This is because we don't have a random access on the result on our filter.
+            // A real application processing logs with ten of thousands of entries may want to store the result of
+            // search/filter.. especially if the filtering function is not trivial (e.g. reg-exp).
+            for (int line_no = 0; line_no < LineOffsets.Size; line_no++)
+            {
+                const char* line_start = buf + LineOffsets[line_no];
+                const char* line_end = (line_no + 1 < LineOffsets.Size) ? (buf + LineOffsets[line_no + 1] - 1) : buf_end;
+                if (Filter.PassFilter(line_start, line_end))
+                    ImGui::TextUnformatted(line_start, line_end);
+            }
+        }
+        else
+        {
+            // The simplest and easy way to display the entire buffer:
+            //   ImGui::TextUnformatted(buf_begin, buf_end);
+            // And it'll just work. TextUnformatted() has specialization for large blob of text and will fast-forward
+            // to skip non-visible lines. Here we instead demonstrate using the clipper to only process lines that are
+            // within the visible area.
+            // If you have tens of thousands of items and their processing cost is non-negligible, coarse clipping them
+            // on your side is recommended. Using ImGuiListClipper requires
+            // - A) random access into your data
+            // - B) items all being the  same height,
+            // both of which we can handle since we an array pointing to the beginning of each line of text.
+            // When using the filter (in the block of code above) we don't have random access into the data to display
+            // anymore, which is why we don't use the clipper. Storing or skimming through the search result would make
+            // it possible (and would be recommended if you want to search through tens of thousands of entries).
+            ImGuiListClipper clipper;
+            clipper.Begin(LineOffsets.Size);
+            while (clipper.Step())
+            {
+                for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++)
+                {
+                    const char* line_start = buf + LineOffsets[line_no];
+                    const char* line_end = (line_no + 1 < LineOffsets.Size) ? (buf + LineOffsets[line_no + 1] - 1) : buf_end;
+                    ImGui::TextUnformatted(line_start, line_end);
+                }
+            }
+            clipper.End();
+        }
+        ImGui::PopStyleVar();
+
+        if (AutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+            ImGui::SetScrollHereY(1.0f);
+
+        ImGui::EndChild();
+        ImGui::End();
+    }
+};
+
 
 class ExampleLayer : public Layer
 {
@@ -119,7 +241,7 @@ public:
 	virtual void OnUpdate(Timestep ts) override
 	{
         m_Framebuffer->Bind();
-		m_CameraController.OnUpdate(ts);
+		m_CameraController.OnUpdate(ts, m_CameraMode);
 		m_DirLight.Direction = m_CameraController.GetCamera().GetFront();
 
         // --------------render----------------------
@@ -170,12 +292,18 @@ public:
 
 	virtual void OnEvent(Event& e) override
 	{
-		m_CameraController.OnEvent(e);
+		EventDispatcher dispatcher(e);
+		dispatcher.Dispatch<KeyPressedEvent>(BIND_EVENT_FN(ExampleLayer::onKeyPressed));
+		if (m_CameraMode)
+			m_CameraController.OnEvent(e);
 	}
 
     virtual void OnImGuiRender() override
 	{
+		static bool settingsOpen = true;
+		static bool viewportOpen = true;
 		static bool dockspaceOpen = true;
+		static bool logOpen = true;
 		static bool opt_fullscreen_persistant = true;
 		bool opt_fullscreen = opt_fullscreen_persistant;
 		static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
@@ -254,6 +382,17 @@ public:
 				ImGui::EndMenu();
 			}
 
+			if (ImGui::BeginMenu("Windows"))
+			{
+				if (ImGui::MenuItem("Settings"))
+					settingsOpen = true;
+				if (ImGui::MenuItem("Viewport"))
+					viewportOpen = true;
+				if (ImGui::MenuItem("Log"))
+					logOpen = true;
+				ImGui::EndMenu();
+			}
+
 			if (ImGui::BeginMenu("Tools"))
 			{
 				if (ImGui::MenuItem("Create Database from Layout"))
@@ -267,7 +406,7 @@ public:
 						if (!m_Database.Exists(db_name))
 						{
 							m_Database.createDataBase(db_name);
-							m_Database.WriteFromLayout(input_file_path);
+							std::thread{&LayoutDatabase::WriteFromLayout, &m_Database, input_file_path}.detach();
 						}
 						else
 						{
@@ -292,103 +431,124 @@ public:
 			ImGui::EndMenuBar();
 		}
 
-		ImGui::Begin("Settings");
-		float speed = m_CameraController.GetTranslationSpeed();
-		if (ImGui::DragFloat("Camera Speed", &speed, 1.0f, 1.0f, 100000.0f))
+		if (settingsOpen)
 		{
-			m_CameraController.SetTranslationSpeed(speed);
-		}
-		if (ImGui::DragFloat("World Scale", &m_WorldScale, 1.0f, 0.1f, 100000.0f))
-		{
-			// m_Camera.setFar(m_WorldScale / 2.0f);
-		}
-		float far = m_CameraController.GetCamera().GetFar();
-		if (ImGui::DragFloat("Far", &far, 1.0f, 0.1f, 100000.0f))
-		{
-			m_CameraController.GetCamera().SetFar(far);
-		}
+			ImGui::Begin("Settings", &settingsOpen);
+			float speed = m_CameraController.GetTranslationSpeed();
+			if (ImGui::DragFloat("Camera Speed", &speed, 1.0f, 1.0f, 100000.0f))
+			{
+				m_CameraController.SetTranslationSpeed(speed);
+			}
+			if (ImGui::DragFloat("World Scale", &m_WorldScale, 1.0f, 0.1f, 100000.0f))
+			{
+				// m_Camera.setFar(m_WorldScale / 2.0f);
+			}
+			float far = m_CameraController.GetCamera().GetFar();
+			if (ImGui::DragFloat("Far", &far, 1.0f, 0.1f, 100000.0f))
+			{
+				m_CameraController.GetCamera().SetFar(far);
+			}
 
-		bool layerIdSet[256] = { false };
-		float layerColors[256][3] = { 0.0f };
-		for (int i = 0; i < m_LayerIdSet.size(); i++)
-		{
-			layerIdSet[i] = m_LayerIdSet[i];
-			layerColors[i][0] = m_LayerColors[i].Diffuse.r;
-			layerColors[i][1] = m_LayerColors[i].Diffuse.g;
-			layerColors[i][2] = m_LayerColors[i].Diffuse.b;
-		}
-		ImGui::SetNextItemOpen(true, ImGuiCond_Once);
-		if (ImGui::TreeNode("Layers"))
-		{
+			bool layerIdSet[256] = { false };
+			float layerColors[256][3] = { 0.0f };
 			for (int i = 0; i < m_LayerIdSet.size(); i++)
 			{
-				std::string label = "Layer " + std::to_string(i + 1);
-				ImGui::SetNextItemOpen(true, ImGuiCond_Once);
-				if (ImGui::TreeNode(label.c_str()))
-				{
-					if (ImGui::Checkbox("show", &layerIdSet[i]))
-					{
-						m_LayerIdSet[i] = layerIdSet[i];
-						m_Database.FilterLayers(m_Polygons, m_LayerIdSet);
-					}
-					ImGui::SameLine();
-					if (ImGui::ColorEdit3("Color", (float*)&layerColors[i], ImGuiColorEditFlags_NoInputs))
-					{
-						m_LayerColors[i].Diffuse.r = layerColors[i][0];
-						m_LayerColors[i].Diffuse.g = layerColors[i][1];
-						m_LayerColors[i].Diffuse.b = layerColors[i][2];
-						m_LayerColors[i].Ambient.r = layerColors[i][0];
-						m_LayerColors[i].Ambient.g = layerColors[i][1];
-						m_LayerColors[i].Ambient.b = layerColors[i][2];
-					}
-					ImGui::TreePop();
-				}
+				layerIdSet[i] = m_LayerIdSet[i];
+				layerColors[i][0] = m_LayerColors[i].Diffuse.r;
+				layerColors[i][1] = m_LayerColors[i].Diffuse.g;
+				layerColors[i][2] = m_LayerColors[i].Diffuse.b;
 			}
-			ImGui::TreePop();
+			ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+			if (ImGui::TreeNode("Layers"))
+			{
+				for (int i = 0; i < m_LayerIdSet.size(); i++)
+				{
+					std::string label = "Layer " + std::to_string(i + 1);
+					ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+					if (ImGui::TreeNode(label.c_str()))
+					{
+						if (ImGui::Checkbox("show", &layerIdSet[i]))
+						{
+							m_LayerIdSet[i] = layerIdSet[i];
+							m_Database.FilterLayers(m_Polygons, m_LayerIdSet);
+						}
+						ImGui::SameLine();
+						if (ImGui::ColorEdit3("Color", (float*)&layerColors[i], ImGuiColorEditFlags_NoInputs))
+						{
+							m_LayerColors[i].Diffuse.r = layerColors[i][0];
+							m_LayerColors[i].Diffuse.g = layerColors[i][1];
+							m_LayerColors[i].Diffuse.b = layerColors[i][2];
+							m_LayerColors[i].Ambient.r = layerColors[i][0];
+							m_LayerColors[i].Ambient.g = layerColors[i][1];
+							m_LayerColors[i].Ambient.b = layerColors[i][2];
+						}
+						ImGui::TreePop();
+					}
+				}
+				ImGui::TreePop();
+			}
+			ImGui::End();
 		}
 		
-		// static bool test = false;
-		// if (ImGui::Checkbox("show", &test));
-		// const char* items[] = { "all", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
-		// static int item_current = 0;
-		// if (ImGui::Combo("Layer ID", &item_current, items, IM_ARRAYSIZE(items)))
-		// {
-		// 	if (item_current != 0)
-		// 		m_Database.FilterLayer(m_Polygons, item_current);
-		// 	else
-		// 		m_Database.GetAllPolygons(m_Polygons);
-		// }
-		// static int clicked = 0;
-		// if (ImGui::Button("Reset Camera Position"))
-        //     clicked++;
-        // if (clicked & 1)
-        // {
-        //     m_CameraController.GetCamera().SetPosition(glm::vec3(0.0f));
-        // }
-		
-		ImGui::End();
-		
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
-		ImGui::Begin("Viewport");
-		ImGui::PopStyleVar();
-		ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
-		if (m_ViewportSize != *((glm::vec2*)&viewportPanelSize))
+		if (viewportOpen)
 		{
-			m_Framebuffer->Resize((uint32_t)viewportPanelSize.x, (uint32_t)viewportPanelSize.y);
-			m_ViewportSize = { viewportPanelSize.x, viewportPanelSize.y };
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
+			ImGui::Begin("Viewport", &viewportOpen);
+			ImGui::PopStyleVar();
+			ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
+			if (m_ViewportSize != *((glm::vec2*)&viewportPanelSize))
+			{
+				m_Framebuffer->Resize((uint32_t)viewportPanelSize.x, (uint32_t)viewportPanelSize.y);
+				m_ViewportSize = { viewportPanelSize.x, viewportPanelSize.y };
 
-			m_CameraController.OnResize(viewportPanelSize.x, viewportPanelSize.y);
+				m_CameraController.OnResize(viewportPanelSize.x, viewportPanelSize.y);
+			}
+			uint32_t textureID = m_Framebuffer->GetColorAttachmentRendererID();
+			ImGui::Image((void*)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+			
+			ImGui::End();
 		}
-		uint32_t textureID = m_Framebuffer->GetColorAttachmentRendererID();
-		ImGui::Image((void*)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
-		
-		ImGui::End();
 
-		ImGui::ShowDemoWindow();
+		if (logOpen)
+		{
+			ImGui::Begin("Log", &logOpen);
+			// For the demo: add a debug button _BEFORE_ the normal log window contents
+			// We take advantage of a rarely used feature: multiple calls to Begin()/End() are appending to the _same_ window.
+			// Most of the contents of the window will be added by the log.Draw() call.
+			ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
+			ImGui::Begin("Log", &logOpen);
+			ImGui::End();
+
+			// Actually call in the regular Log helper (which will Begin() into the same window as we just did)
+			m_Log.Draw("Log", &logOpen);
+		}
+		
+		// ImGui::ShowDemoWindow();
 
 		ImGui::End();
 	}
 private:
+	bool onKeyPressed(KeyPressedEvent &e)
+	{
+		if (e.GetKeyCode() == KEY_C)
+		{
+			m_CameraMode = !m_CameraMode;
+		    if (m_CameraMode) {
+		        glfwSetInputMode((GLFWwindow*)Application::Get().GetWindow().GetNativeWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		    }
+		    else {
+		        glfwSetInputMode((GLFWwindow*)Application::Get().GetWindow().GetNativeWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		    }
+		    return true;
+		}
+		if (e.GetKeyCode() == KEY_ESCAPE)
+		{
+			m_CameraMode = false;
+			glfwSetInputMode((GLFWwindow*)Application::Get().GetWindow().GetNativeWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			return true;
+		}
+		return false;
+	}
 	// auto ColorFromBytes = [](uint8_t r, uint8_t g, uint8_t b)
 	// {
 	// 	return ImVec4((float)r / 255.0f, (float)g / 255.0f, (float)b / 255.0f, 1.0f);
@@ -421,6 +581,9 @@ private:
 	float m_WorldScale = 100.0f;
 	std::vector<bool> m_LayerIdSet;
 	std::vector<Material> m_LayerColors;
+
+	bool m_CameraMode = false;
+	ExampleAppLog m_Log{};
 };
 
 class Sandbox : public Application

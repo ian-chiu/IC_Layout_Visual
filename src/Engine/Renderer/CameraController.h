@@ -12,7 +12,7 @@ class PerspectiveCameraController
 public:
     PerspectiveCameraController(float aspectRatio);
 
-    void OnUpdate(Timestep ts);
+    void OnUpdate(Timestep ts, bool enableKeyControls = true);
     void OnEvent(Event& e);
 
     void OnResize(float width, float height);

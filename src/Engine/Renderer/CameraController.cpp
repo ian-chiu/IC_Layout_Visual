@@ -10,37 +10,40 @@ PerspectiveCameraController::PerspectiveCameraController(float aspectRatio)
 {
 }
 
-void PerspectiveCameraController::OnUpdate(Timestep ts)
+void PerspectiveCameraController::OnUpdate(Timestep ts, bool enableKeyControls)
 {
-    if (Input::IsKeyPressed(KEY_W)) 
-        m_CameraPosition += (ts * m_CameraTranslationSpeed) * m_Camera.GetFront();
-    else if (Input::IsKeyPressed(KEY_S)) 
-        m_CameraPosition -= (ts * m_CameraTranslationSpeed) * m_Camera.GetFront();
+    if (enableKeyControls)
+    {
+        if (Input::IsKeyPressed(KEY_W)) 
+            m_CameraPosition += (ts * m_CameraTranslationSpeed) * m_Camera.GetFront();
+        else if (Input::IsKeyPressed(KEY_S)) 
+            m_CameraPosition -= (ts * m_CameraTranslationSpeed) * m_Camera.GetFront();
 
-    if (Input::IsKeyPressed(KEY_A)) 
-        m_CameraPosition -= glm::normalize(glm::cross(m_Camera.GetFront(), m_Camera.GetUp())) * (ts * m_CameraTranslationSpeed);
-    else if (Input::IsKeyPressed(KEY_D)) 
-        m_CameraPosition += glm::normalize(glm::cross(m_Camera.GetFront(), m_Camera.GetUp())) * (ts * m_CameraTranslationSpeed);
+        if (Input::IsKeyPressed(KEY_A)) 
+            m_CameraPosition -= glm::normalize(glm::cross(m_Camera.GetFront(), m_Camera.GetUp())) * (ts * m_CameraTranslationSpeed);
+        else if (Input::IsKeyPressed(KEY_D)) 
+            m_CameraPosition += glm::normalize(glm::cross(m_Camera.GetFront(), m_Camera.GetUp())) * (ts * m_CameraTranslationSpeed);
 
-    if (Input::IsKeyPressed(KEY_SPACE) || Input::IsKeyPressed(KEY_LEFT_SHIFT)) 
-        m_CameraPosition += m_Camera.GetUp() * (ts * m_CameraTranslationSpeed);
-    else if (Input::IsKeyPressed(KEY_LEFT_CONTROL)) 
-        m_CameraPosition -= m_Camera.GetUp() * (ts * m_CameraTranslationSpeed);
+        if (Input::IsKeyPressed(KEY_SPACE) || Input::IsKeyPressed(KEY_LEFT_SHIFT)) 
+            m_CameraPosition += m_Camera.GetUp() * (ts * m_CameraTranslationSpeed);
+        else if (Input::IsKeyPressed(KEY_LEFT_CONTROL)) 
+            m_CameraPosition -= m_Camera.GetUp() * (ts * m_CameraTranslationSpeed);
 
-    if (Input::IsKeyPressed(KEY_UP) )
-        m_Camera.AddPitch(m_CameraRotationSpeed * ts);
-    else if (Input::IsKeyPressed(KEY_DOWN))
-        m_Camera.AddPitch(-m_CameraRotationSpeed * ts);
+        if (Input::IsKeyPressed(KEY_UP) )
+            m_Camera.AddPitch(m_CameraRotationSpeed * ts);
+        else if (Input::IsKeyPressed(KEY_DOWN))
+            m_Camera.AddPitch(-m_CameraRotationSpeed * ts);
 
-    if (Input::IsKeyPressed(KEY_RIGHT))
-        m_Camera.AddYaw(m_CameraRotationSpeed * ts);
-    else if (Input::IsKeyPressed(KEY_LEFT))
-        m_Camera.AddYaw(-m_CameraRotationSpeed * ts);
+        if (Input::IsKeyPressed(KEY_RIGHT))
+            m_Camera.AddYaw(m_CameraRotationSpeed * ts);
+        else if (Input::IsKeyPressed(KEY_LEFT))
+            m_Camera.AddYaw(-m_CameraRotationSpeed * ts);
 
-    if (Input::IsKeyPressed(KEY_KP_ADD) && m_CameraTranslationSpeed <= 50.0f)
-        m_CameraTranslationSpeed += 0.1f;
-    else if (Input::IsKeyPressed(KEY_KP_SUBTRACT) && m_CameraTranslationSpeed >= 1.0f)
-        m_CameraTranslationSpeed -= 0.1f;
+        if (Input::IsKeyPressed(KEY_KP_ADD) && m_CameraTranslationSpeed <= 50.0f)
+            m_CameraTranslationSpeed += 0.1f;
+        else if (Input::IsKeyPressed(KEY_KP_SUBTRACT) && m_CameraTranslationSpeed >= 1.0f)
+            m_CameraTranslationSpeed -= 0.1f;
+    }
 
     m_Camera.SetPosition(m_CameraPosition);
 }
@@ -48,12 +51,8 @@ void PerspectiveCameraController::OnUpdate(Timestep ts)
 void PerspectiveCameraController::OnEvent(Event& e)
 {
     EventDispatcher dispatcher(e);
-    if (m_MouseNavMode)
-    {
-        dispatcher.Dispatch<MouseMovedEvent>(BIND_EVENT_FN(PerspectiveCameraController::onMouseMoved));
-        dispatcher.Dispatch<MouseScrolledEvent>(BIND_EVENT_FN(PerspectiveCameraController::OnMouseScrolled));
-    }
-    dispatcher.Dispatch<KeyPressedEvent>(BIND_EVENT_FN(PerspectiveCameraController::onKeyPressed));
+    dispatcher.Dispatch<MouseMovedEvent>(BIND_EVENT_FN(PerspectiveCameraController::onMouseMoved));
+    dispatcher.Dispatch<MouseScrolledEvent>(BIND_EVENT_FN(PerspectiveCameraController::OnMouseScrolled));
 }
 
 void PerspectiveCameraController::OnResize(float width, float height)
@@ -83,18 +82,18 @@ bool PerspectiveCameraController::OnMouseScrolled(MouseScrolledEvent& e)
 
 bool PerspectiveCameraController::onKeyPressed(KeyPressedEvent &e)
 {
-    if (e.GetKeyCode() == KEY_F1)
-    {
-        if (!m_MouseNavMode) {
-            glfwSetInputMode((GLFWwindow*)Application::Get().GetWindow().GetNativeWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        }
-        else {
-            glfwSetInputMode((GLFWwindow*)Application::Get().GetWindow().GetNativeWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        }
-        m_MouseNavMode = !m_MouseNavMode;
+    // if (e.GetKeyCode() == KEY_F1)
+    // {
+    //     if (!m_MouseNavMode) {
+    //         glfwSetInputMode((GLFWwindow*)Application::Get().GetWindow().GetNativeWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    //     }
+    //     else {
+    //         glfwSetInputMode((GLFWwindow*)Application::Get().GetWindow().GetNativeWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    //     }
+    //     m_MouseNavMode = !m_MouseNavMode;
 
-        return true;
-    }
+    //     return true;
+    // }
     return false;
 }
 
