@@ -113,7 +113,7 @@ void LayoutDatabase::FilterLayers(std::vector<Polygon> &polygons, const std::vec
         };
 }
 
-void LayoutDatabase::WriteFromLayout(const fs::path &layout_file_path)
+bool LayoutDatabase::WriteFromLayout(const fs::path &layout_file_path)
 {
     try
     {
@@ -163,12 +163,14 @@ void LayoutDatabase::WriteFromLayout(const fs::path &layout_file_path)
         }
 
         db << "commit;";
+        return true;
     }
     catch(const std::exception& e)
     {
         std::cerr << e.what() << '\n';
         LOG_ERROR("Fail to write layout!");
     }
+    return false;
 }
 
 bool LayoutDatabase::Exists(const std::string &db_name)

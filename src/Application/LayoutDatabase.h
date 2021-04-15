@@ -25,7 +25,7 @@ public:
 
     void FilterLayers(std::vector<Polygon> &buffer, const std::vector<bool> &layerIdSet);
 
-    void WriteFromLayout(const fs::path &layout_file_path);
+    bool WriteFromLayout(const fs::path &layout_file_path);
 
     bool Exists(const std::string &db_name);
 

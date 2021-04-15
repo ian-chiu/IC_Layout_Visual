@@ -13,7 +13,7 @@
 #include <fstream>
 #include <sstream>
 
-#include <thread>
+#include <future>
 
 #include "FrustumCull.h"
 #include "LayoutDatabase.h"
@@ -240,6 +240,14 @@ public:
 
 	virtual void OnUpdate(Timestep ts) override
 	{
+		while (!m_Futures.empty() && is_ready(m_Futures.front())) 
+		{
+			if (m_Futures.front().get())
+				m_Log.AddLog("Successfully write the layout to the database.\n\n");
+			else 
+				m_Log.AddLog("Cannot write the layout to database!\n\n");
+            m_Futures.pop_back();
+        }
         m_Framebuffer->Bind();
 		m_CameraController.OnUpdate(ts, m_CameraMode);
 		m_DirLight.Direction = m_CameraController.GetCamera().GetFront();
@@ -368,6 +376,11 @@ public:
 						m_CameraController.GetCamera().SetYaw(0.0f);
 						m_LayerIdSet.resize(m_Database.GetLayerCount(), true);
 						m_LayerColors.resize(m_Database.GetLayerCount(), m_Material);
+
+						for (int i = 0; i < m_LayerColors.size(); i++) {
+							m_LayerColors[i].Diffuse = m_DefaultColors[i % m_LayerColors.size()];
+							m_LayerColors[i].Ambient = m_DefaultColors[i % m_LayerColors.size()];
+						}
 					}
 					else if ( result == NFD_CANCEL )
 					{
@@ -405,15 +418,18 @@ public:
 						std::string db_name = input_file_path.stem().string() + ".db";
 						if (!m_Database.Exists(db_name))
 						{
+							m_Log.AddLog("Create database %s...\n", db_name.c_str());
 							m_Database.createDataBase(db_name);
-							std::thread{&LayoutDatabase::WriteFromLayout, &m_Database, input_file_path}.detach();
 						}
 						else
 						{
-							LOG_WARN(db_name + " is already existed! Rewrite data from layout file.");
+							m_Log.AddLog("%s is already existed! Rewrite data from the layout.\n", db_name.c_str());
 							m_Database.Connect(db_name);
-							m_Database.WriteFromLayout(input_file_path);
 						}
+						m_Log.AddLog("Write %s to database %s...\n", nfd_file_path, db_name.c_str());
+						m_Futures.push_back(
+							std::async(std::launch::async, &LayoutDatabase::WriteFromLayout, &m_Database, input_file_path)
+						);
 					}
 					else if ( result == NFD_CANCEL )
 					{
@@ -511,7 +527,6 @@ public:
 
 		if (logOpen)
 		{
-			ImGui::Begin("Log", &logOpen);
 			// For the demo: add a debug button _BEFORE_ the normal log window contents
 			// We take advantage of a rarely used feature: multiple calls to Begin()/End() are appending to the _same_ window.
 			// Most of the contents of the window will be added by the log.Draw() call.
@@ -549,10 +564,12 @@ private:
 		}
 		return false;
 	}
-	// auto ColorFromBytes = [](uint8_t r, uint8_t g, uint8_t b)
-	// {
-	// 	return ImVec4((float)r / 255.0f, (float)g / 255.0f, (float)b / 255.0f, 1.0f);
-	// };
+
+	template<typename R>
+	bool is_ready(std::future<R> const& f)
+	{ 
+		return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready; 
+	}
 
 private:
 	Ref<Framebuffer> m_Framebuffer;
@@ -584,6 +601,19 @@ private:
 
 	bool m_CameraMode = false;
 	ExampleAppLog m_Log{};
+
+	std::vector<std::future<bool>> m_Futures{};
+	std::vector<glm::vec3> m_DefaultColors{
+		{ 44.0f / 255.0f, 60.0f / 255.0f, 102.0f / 255.0f },
+		{ 198.0f / 255.0f, 144.0f / 255.0f, 102.0f / 255.0f },
+		{ 163.0f / 255.0f, 75.0f / 255.0f, 75.0f / 255.0f },
+		{ 5.0f / 255.0f, 128.0f / 255.0f, 19.0f / 255.0f },
+		{ 198.0f / 255.0f, 74.0f / 255.0f, 247.0f / 255.0f },
+		{ 204.0f / 255.0f, 172.0f / 255.0f, 90.0f / 255.0f },
+		{ 37.0f / 255.0f, 184.0f / 255.0f, 199.0f / 255.0f },
+		{ 106.0f / 255.0f, 196.0f / 255.0f, 71.0f / 255.0f },
+		{ 201.0f / 255.0f, 95.0f / 255.0f, 125.0f / 255.0f },
+	};
 };
 
 class Sandbox : public Application
