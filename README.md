@@ -1,9 +1,9 @@
 # IC_Layout_Visual
-
+![](https://i.imgur.com/svNeeuD.png)
 ## 編譯
 ### 環境:
 1.	使用cmake幫忙編譯整個專案
-2.	使用的編譯器為msvc (裝Visual Studio 2019 就有了)
+2.	OS: Windows，使用的編譯器為msvc (裝Visual Studio 2019 就有了)
 3.	使用git裡面的git submodule做套件管理
 4.	C++版本: 17
 
@@ -12,7 +12,7 @@
 ### 如何編譯
 1. 下載套件原始碼
 
-此專案所使用的第三方套件都放在vendors的檔案夾裡，如果到vendors裡去點選一些套件的檔案夾會發現有些套件的檔案是空的。回到專案的根目錄有一個叫做”.gitsubmodules”的檔案，裡面的內容有各個套件的github網址以及要把套件下載到那個資料夾裡。在根目錄執行:
+此專案所使用的第三方套件都放在vendors的檔案夾裡，如果到vendors裡去點選一些套件的檔案夾會發現有些套件的檔案是空的。回到專案的根目錄有一個叫做”.gitsubmodules”的檔案，裡面的內容有各個套件的github網址。在根目錄執行:
 ```
 git submodule update --init --recursive
 ```
