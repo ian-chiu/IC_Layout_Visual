@@ -1,8 +1,7 @@
 # IC_Layout_Visual
 ![](https://i.imgur.com/svNeeuD.png)
 
-Demo Video:
-{%youtube UOOK9NKUdD0 %}
+Demo Video: https://youtu.be/UOOK9NKUdD0
 
 ## 編譯
 ### 環境:
